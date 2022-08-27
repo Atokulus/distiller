@@ -15,11 +15,11 @@
 #
 
 import logging
-import distiller
+from .. import GroupThresholdMixin
 msglogger = logging.getLogger()
 
 
-class StructureParameterPruner(distiller.GroupThresholdMixin):
+class StructureParameterPruner(GroupThresholdMixin):
     """Prune parameter structures.
 
     Pruning criterion: average L1-norm.  If the average L1-norm (absolute value) of the eleements

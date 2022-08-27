@@ -19,8 +19,8 @@ import torch.nn as nn
 from torchvision.ops.misc import FrozenBatchNorm2d
 from collections import OrderedDict
 import distiller
-import distiller.modules
-from distiller.quantization.sim_bn_fold import SimulatedFoldedBatchNorm
+from . import modules
+from .quantization.sim_bn_fold import SimulatedFoldedBatchNorm
 import logging
 msglogger = logging.getLogger()
 

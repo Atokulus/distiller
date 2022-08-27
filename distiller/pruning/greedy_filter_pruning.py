@@ -45,10 +45,10 @@ import multiprocessing
 import csv
 import os
 import distiller
-from distiller.apputils import save_checkpoint
-from distiller.data_loggers import PythonLogger
-from distiller.summary_graph import SummaryGraph
-from distiller import normalize_module_name
+from ..apputils import save_checkpoint
+from ..data_loggers import PythonLogger
+from ..summary_graph import SummaryGraph
+from .. import normalize_module_name
 
 __all__ = ['add_greedy_pruner_args', 'greedy_pruner']
 msglogger = logging.getLogger()

@@ -26,7 +26,7 @@ import torchvision.datasets as datasets
 from torch.utils.data.sampler import Sampler
 from functools import partial
 import numpy as np
-import distiller
+from .. import set_deterministic
 
 
 DATASETS_NAMES = ['imagenet', 'cifar10', 'mnist']
@@ -292,7 +292,7 @@ def get_data_loaders(datasets_fn, data_dir, batch_size, num_workers, validation_
 
     worker_init_fn = None
     if deterministic:
-        distiller.set_deterministic()
+        set_deterministic()
         worker_init_fn = __deterministic_worker_init_fn
 
     test_indices = list(range(len(test_dataset)))

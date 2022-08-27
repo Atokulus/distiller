@@ -27,12 +27,11 @@ from copy import deepcopy
 import warnings
 
 import distiller
-import distiller.utils
+from .. import utils, modules
 from .quantizer import Quantizer, QBits
 from .q_utils import *
 from .sim_bn_fold import SimulatedFoldedBatchNorm
-import distiller.modules
-import distiller.model_transforms as mt
+from .. import model_transforms as mt
 from . import pytorch_quant_conversion as pytqc
 
 import torch.quantization
@@ -339,7 +338,7 @@ def add_post_train_quant_args(argparser, add_lapq_args=False):
     stats_group.add_argument('--qe-stats-file', type=str, metavar='PATH',
                              help='Path to YAML file with pre-made calibration stats')
     stats_group.add_argument('--qe-dynamic', action='store_true', help='Apply dynamic quantization')
-    stats_group.add_argument('--qe-calibration', type=distiller.utils.float_range_argparse_checker(exc_min=True),
+    stats_group.add_argument('--qe-calibration', type=utils.float_range_argparse_checker(exc_min=True),
                              metavar='PORTION_OF_TEST_SET', default=None,
                              help='Run the model in evaluation mode on the specified portion of the test dataset and '
                                   'collect statistics')
@@ -1059,7 +1058,7 @@ class RangeLinearQuantMatmulWrapper(RangeLinearQuantWrapper):
         y_q = ------------------- * ((i1_q + zp_i1) * (i2_q + zp_i2) + zp_y
                scale_i1 * scale_i2
     Args:
-        wrapped_module (distiller.modules.Matmul or distiller.modules.BatchMatmul): Module to be wrapped
+        wrapped_module (modules.Matmul or modules.BatchMatmul): Module to be wrapped
         num_bits_acts (int): Number of bits used for inputs and output quantization
         num_bits_accum (int): Number of bits allocated for the accumulator of intermediate integer results
         mode (ModuleQuantMode / LinearQuantMode): Quantization mode to use (symmetric / asymmetric-signed/unsigned)
@@ -1078,7 +1077,7 @@ class RangeLinearQuantMatmulWrapper(RangeLinearQuantWrapper):
                                                             input_overrides=input_overrides,
                                                             inputs_quant_auto_fallback=inputs_quant_auto_fallback)
 
-        if not isinstance(wrapped_module, (distiller.modules.Matmul, distiller.modules.BatchMatmul)):
+        if not isinstance(wrapped_module, (modules.Matmul, modules.BatchMatmul)):
             raise ValueError(self.__class__.__name__ + ' can wrap only Matmul modules')
         self.accum_scale = 1
 
@@ -1128,8 +1127,8 @@ class RangeLinearQuantConcatWrapper(RangeLinearQuantWrapper):
     def __init__(self, wrapped_module, num_bits_acts, mode=LinearQuantMode.SYMMETRIC, clip_acts=ClipMode.NONE,
                  activation_stats=None, clip_n_stds=None, clip_half_range=False, scale_approx_mult_bits=None,
                  input_overrides=None, inputs_quant_auto_fallback=False):
-        if not isinstance(wrapped_module, distiller.modules.Concat):
-            raise ValueError(self.__class__.__name__ + ' can only wrap distiller.modules.Concat modules')
+        if not isinstance(wrapped_module, modules.Concat):
+            raise ValueError(self.__class__.__name__ + ' can only wrap modules.Concat modules')
 
         if not activation_stats:
             raise NoStatsError(self.__class__.__name__ +
@@ -1178,8 +1177,8 @@ class RangeLinearQuantEltwiseAddWrapper(RangeLinearQuantWrapper):
     def __init__(self, wrapped_module, num_bits_acts, mode=LinearQuantMode.SYMMETRIC, clip_acts=ClipMode.NONE,
                  activation_stats=None, clip_n_stds=None, clip_half_range=False, scale_approx_mult_bits=None,
                  input_overrides=None, inputs_quant_auto_fallback=False):
-        if not isinstance(wrapped_module, distiller.modules.EltwiseAdd):
-            raise ValueError(self.__class__.__name__ + ' can only wrap distiller.modules.EltwiseAdd modules')
+        if not isinstance(wrapped_module, modules.EltwiseAdd):
+            raise ValueError(self.__class__.__name__ + ' can only wrap modules.EltwiseAdd modules')
 
         if not activation_stats:
             raise NoStatsError(self.__class__.__name__ +
@@ -1225,8 +1224,8 @@ class RangeLinearQuantEltwiseMultWrapper(RangeLinearQuantWrapper):
     def __init__(self, wrapped_module, num_bits_acts, mode=LinearQuantMode.SYMMETRIC, clip_acts=ClipMode.NONE,
                  activation_stats=None, clip_n_stds=None, clip_half_range=False, scale_approx_mult_bits=None,
                  input_overrides=None, inputs_quant_auto_fallback=False):
-        if not isinstance(wrapped_module, distiller.modules.EltwiseMult):
-            raise ValueError(self.__class__.__name__ + ' can only wrap distiller.modules.EltwiseMult modules')
+        if not isinstance(wrapped_module, modules.EltwiseMult):
+            raise ValueError(self.__class__.__name__ + ' can only wrap modules.EltwiseMult modules')
 
         if not activation_stats:
             raise NoStatsError(self.__class__.__name__ +
@@ -1555,12 +1554,12 @@ class PostTrainLinearQuantizer(Quantizer):
       * torch.nn.Conv2d/Conv3d
       * torch.nn.Linear
       * torch.nn.Embedding
-      * distiller.modules.Concat
-      * distiller.modules.EltwiseAdd
-      * distiller.modules.EltwiseMult
-      * distiller.modules.Matmul
-      * distiller.modules.BatchMatmul
-    An existing module will likely need to be modified to use the 'distiller.modules.*' modules. This needs to
+      * modules.Concat
+      * modules.EltwiseAdd
+      * modules.EltwiseMult
+      * modules.Matmul
+      * modules.BatchMatmul
+    An existing module will likely need to be modified to use the 'modules.*' modules. This needs to
     be done BEFORE creating the quantizer. See the docs for more details:
     https://intellabs.github.io/distiller/prepare_model_quant.html
 
@@ -1625,7 +1624,7 @@ class PostTrainLinearQuantizer(Quantizer):
                     raise ValueError("Model activation stats file not found at: " + model_activation_stats)
                 msglogger.info('Loading activation stats from: ' + model_activation_stats)
                 with open(model_activation_stats, 'r') as stream:
-                    model_activation_stats = distiller.utils.yaml_ordered_load(stream)
+                    model_activation_stats = utils.yaml_ordered_load(stream)
             elif not isinstance(model_activation_stats, (dict, OrderedDict)):
                 raise TypeError('model_activation_stats must either be a string, a dict / OrderedDict or None')
 
@@ -1660,7 +1659,7 @@ class PostTrainLinearQuantizer(Quantizer):
             if fpq_module and not fake:
                 return FPWrapper(module, fpq_module)
 
-            norm_name = distiller.utils.normalize_module_name(name)
+            norm_name = utils.normalize_module_name(name)
             activation_stats = self.model_activation_stats.get(norm_name, None)
             clip_acts = verify_clip_mode(clip_acts or self.clip_acts)
             qbits = qbits_map[name]
@@ -1697,7 +1696,7 @@ class PostTrainLinearQuantizer(Quantizer):
             if fpq_module and not fake:
                 return FPWrapper(module, fpq_module)
 
-            norm_name = distiller.utils.normalize_module_name(name)
+            norm_name = utils.normalize_module_name(name)
             activation_stats = self.model_activation_stats.get(norm_name, None)
             clip_acts = verify_clip_mode(clip_acts or self.clip_acts)
             qbits = qbits_map[name]
@@ -1727,7 +1726,7 @@ class PostTrainLinearQuantizer(Quantizer):
             fpq_module = _check_fp16_arg(fp16, fpq_module)
             if fpq_module:
                 return FPWrapper(module, fpq_module, convert_input=False)
-            norm_name = distiller.utils.normalize_module_name(name)
+            norm_name = utils.normalize_module_name(name)
             if not self.also_clip_weights:
                 clip_acts, clip_n_stds, clip_half_range = ClipMode.NONE, None, False
             return RangeLinearEmbeddingWrapper(module, qbits_map[name].wts, mode=mode,
@@ -1753,7 +1752,7 @@ class PostTrainLinearQuantizer(Quantizer):
             if not fake:
                 return FPWrapper(module, fpq_module)
 
-            norm_name = distiller.utils.normalize_module_name(name)
+            norm_name = utils.normalize_module_name(name)
             clip_acts = verify_clip_mode(clip_acts or self.clip_acts)
             return RangeLinearFakeQuantWrapper(module, qbits_map[name].acts, mode=mode, clip_acts=clip_acts,
                                                activation_stats=self.model_activation_stats.get(norm_name, None),
@@ -1789,11 +1788,11 @@ class PostTrainLinearQuantizer(Quantizer):
         update_wrapper(factory_eltwisemult, replace_non_param_layer)
         update_wrapper(factory_matmul, replace_non_param_layer)
 
-        self.replacement_factory[distiller.modules.Concat] = factory_concat
-        self.replacement_factory[distiller.modules.EltwiseAdd] = factory_eltwiseadd
-        self.replacement_factory[distiller.modules.EltwiseMult] = factory_eltwisemult
-        self.replacement_factory[distiller.modules.Matmul] = factory_matmul
-        self.replacement_factory[distiller.modules.BatchMatmul] = factory_matmul
+        self.replacement_factory[modules.Concat] = factory_concat
+        self.replacement_factory[modules.EltwiseAdd] = factory_eltwiseadd
+        self.replacement_factory[modules.EltwiseMult] = factory_eltwisemult
+        self.replacement_factory[modules.Matmul] = factory_matmul
+        self.replacement_factory[modules.BatchMatmul] = factory_matmul
         self.replacement_factory[nn.Embedding] = replace_embedding
 
         self.default_repalcement_fn = replace_fake_quant
@@ -1966,7 +1965,7 @@ class PostTrainLinearQuantizer(Quantizer):
                               "  * Optimizations for quantization of layers followed by Relu/Tanh/Sigmoid are only "
                               "supported when statistics are used.\nEND WARNING\n")
 
-        self.has_bidi_distiller_lstm = any(isinstance(m, distiller.modules.DistillerLSTM) and m.bidirectional for
+        self.has_bidi_distiller_lstm = any(isinstance(m, modules.DistillerLSTM) and m.bidirectional for
                                            _, m in self.model.named_modules())
         if self.has_bidi_distiller_lstm:
             warnings.warn('Model contains a bidirectional DistillerLSTM module. '
@@ -2138,7 +2137,7 @@ class PostTrainLinearQuantizer(Quantizer):
 
     def _apply_bidi_distiller_lstm_stats_fusion(self):
         distiller_lstm_cells = [n for n, m in self.model.named_modules() if
-                                isinstance(m, distiller.modules.DistillerLSTMCell)]
+                                isinstance(m, modules.DistillerLSTMCell)]
 
         for name in distiller_lstm_cells:
             name += '.eltwiseadd_gate'
@@ -2361,7 +2360,7 @@ class NCFQuantAwareTrainQuantizer(QuantAwareTrainRangeLinearQuantizer):
         # actually take it as an argument
         self.model.quantizer_metadata['params'].pop('quantize_inputs')
 
-        self.replacement_factory[distiller.modules.EltwiseMult] = self.activation_replace_fn
-        self.replacement_factory[distiller.modules.Concat] = self.activation_replace_fn
+        self.replacement_factory[modules.EltwiseMult] = self.activation_replace_fn
+        self.replacement_factory[modules.Concat] = self.activation_replace_fn
         self.replacement_factory[nn.Linear] = self.activation_replace_fn
         # self.replacement_factory[nn.Sigmoid] = self.activation_replace_fn

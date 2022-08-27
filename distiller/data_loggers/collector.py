@@ -32,8 +32,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import distiller
-from distiller.quantization.range_linear import is_post_train_quant_wrapper
-from distiller.quantization.pytorch_quant_conversion import QFunctionalWrapper
+from ..quantization.range_linear import is_post_train_quant_wrapper
+from ..quantization.pytorch_quant_conversion import QFunctionalWrapper
 import numpy as np
 import concurrent.futures
 

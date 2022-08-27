@@ -20,7 +20,7 @@ The code below supports fine-grained tensor thresholding and group-wise threshol
 """
 import torch
 import numpy as np
-from distiller.norms import *
+from .norms import *
 
 
 __all__ = ["GroupThresholdMixin",

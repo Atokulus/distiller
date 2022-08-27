@@ -21,7 +21,7 @@ import logging
 import torch
 from torch.nn import functional as f
 from random import uniform
-import distiller
+from ..norms import l1_norm, rank_channels
 
 
 __all__ = ["LpRankedStructureParameterPruner",
@@ -141,10 +141,10 @@ class LpRankedStructureParameterPruner(_RankedStructureParameterPruner):
 
     @staticmethod
     def rank_and_prune_channels(fraction_to_prune, param, param_name=None, zeros_mask_dict=None, 
-                                model=None, binary_map=None, magnitude_fn=distiller.norms.l1_norm,
+                                model=None, binary_map=None, magnitude_fn=l1_norm,
                                 noise=0.0, group_size=1, rounding_fn=math.floor):
         if binary_map is None:
-            bottomk_channels, channel_mags = distiller.norms.rank_channels(param, group_size, magnitude_fn,
+            bottomk_channels, channel_mags = rank_channels(param, group_size, magnitude_fn,
                                                                            fraction_to_prune, rounding_fn, noise)
             if bottomk_channels is None:
                 # Empty list means that fraction_to_prune is too low to prune anything
@@ -163,11 +163,11 @@ class LpRankedStructureParameterPruner(_RankedStructureParameterPruner):
 
     @staticmethod
     def rank_and_prune_filters(fraction_to_prune, param, param_name, zeros_mask_dict,
-                               model=None, binary_map=None, magnitude_fn=distiller.norms.l1_norm,
+                               model=None, binary_map=None, magnitude_fn=l1_norm,
                                noise=0.0, group_size=1, rounding_fn=math.floor):
         assert param.dim() == 4 or param.dim() == 3, "This pruning is only supported for 3D and 4D weights"
         if binary_map is None:
-            bottomk_filters, filter_mags = distiller.norms.rank_filters(param, group_size, magnitude_fn,
+            bottomk_filters, filter_mags = rank_filters(param, group_size, magnitude_fn,
                                                                         fraction_to_prune, rounding_fn, noise)
             if bottomk_filters is None:
                 # Empty list means that fraction_to_prune is too low to prune anything
@@ -188,7 +188,7 @@ class LpRankedStructureParameterPruner(_RankedStructureParameterPruner):
     @staticmethod
     def rank_and_prune_blocks(fraction_to_prune, param, param_name=None, zeros_mask_dict=None,
                               model=None, binary_map=None, block_shape=None,
-                              magnitude_fn=distiller.norms.l1_norm, group_size=1):
+                              magnitude_fn=l1_norm, group_size=1):
         """Block-wise pruning for 4D tensors.
 
         The block shape is specified using a tuple: [block_repetitions, block_depth, block_height, block_width].
@@ -276,7 +276,7 @@ class L1RankedStructureParameterPruner(LpRankedStructureParameterPruner):
                  group_dependency=None, kwargs=None, noise=0.0,
                  group_size=1, rounding_fn=math.floor):
         super().__init__(name, group_type, desired_sparsity, weights, group_dependency, 
-                         kwargs, magnitude_fn=distiller.norms.l1_norm, noise=noise,
+                         kwargs, magnitude_fn=distiller.distiller.norms.l1_norm, noise=noise,
                          group_size=group_size, rounding_fn=rounding_fn)
 
 
@@ -289,7 +289,7 @@ class L2RankedStructureParameterPruner(LpRankedStructureParameterPruner):
                  group_dependency=None, kwargs=None, noise=0.0,
                  group_size=1, rounding_fn=math.floor):
         super().__init__(name, group_type, desired_sparsity, weights, group_dependency, 
-                         kwargs, magnitude_fn=distiller.norms.l2_norm, noise=noise,
+                         kwargs, magnitude_fn=distiller.distiller.norms.l2_norm, noise=noise,
                          group_size=group_size, rounding_fn=rounding_fn)
 
 
@@ -619,7 +619,7 @@ class FMReconstructionChannelPruner(_RankedStructureParameterPruner):
         intermediate_fms['input_fms'][module.distiller_name].append(X)
 
     def __init__(self, name, group_type, desired_sparsity, weights,
-                 group_dependency=None, kwargs=None, magnitude_fn=distiller.norms.l1_norm,
+                 group_dependency=None, kwargs=None, magnitude_fn=l1_norm,
                  group_size=1, rounding_fn=math.floor, ranking_noise=0.):
         super().__init__(name, group_type, desired_sparsity, weights, group_dependency,
                          group_size=group_size, rounding_fn=rounding_fn, noise=ranking_noise)
@@ -644,11 +644,11 @@ class FMReconstructionChannelPruner(_RankedStructureParameterPruner):
     @staticmethod
     def rank_and_prune_channels(fraction_to_prune, param, param_name=None,
                                 zeros_mask_dict=None, model=None, binary_map=None, 
-                                magnitude_fn=distiller.norms.l1_norm, group_size=1, rounding_fn=math.floor,
+                                magnitude_fn=l1_norm, group_size=1, rounding_fn=math.floor,
                                 noise=0):
         assert binary_map is None
         if binary_map is None:
-            bottomk_channels, channel_mags = distiller.norms.rank_channels(param, group_size, magnitude_fn,
+            bottomk_channels, channel_mags = rank_channels(param, group_size, magnitude_fn,
                                                                            fraction_to_prune, rounding_fn, noise)
 
             # Todo: this little piece of code can be refactored

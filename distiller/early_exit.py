@@ -18,7 +18,7 @@
 __all__ = ["EarlyExitMgr"]
 
 import torch.nn as nn
-from distiller.modules import BranchPoint
+from .modules import BranchPoint
 
 
 class EarlyExitMgr(object):
