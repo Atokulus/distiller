@@ -27,7 +27,7 @@ import logging
 from numbers import Number
 from tabulate import tabulate
 import torch
-import distiller
+from ..scheduler import CompressionScheduler
 from ..utils import normalize_module_name
 msglogger = logging.getLogger()
 
@@ -207,7 +207,7 @@ def load_checkpoint(model, chkpt_file, optimizer=None,
     compression_scheduler = None
     normalize_dataparallel_keys = False
     if 'compression_sched' in checkpoint:
-        compression_scheduler = distiller.CompressionScheduler(model)
+        compression_scheduler = CompressionScheduler(model)
         normalize_dataparallel_keys = _load_compression_scheduler()
     else:
         msglogger.info("Warning: compression schedule data does not exist in the checkpoint")
@@ -215,7 +215,7 @@ def load_checkpoint(model, chkpt_file, optimizer=None,
     if 'thinning_recipes' in checkpoint:
         if not compression_scheduler:
             msglogger.warning("Found thinning_recipes key, but missing key compression_scheduler")
-            compression_scheduler = distiller.CompressionScheduler(model)
+            compression_scheduler = CompressionScheduler(model)
         _load_and_execute_thinning_recipes()
 
     if 'quantizer_metadata' in checkpoint:
